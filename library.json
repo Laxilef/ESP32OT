@@ -1,0 +1,19 @@
+{
+  "name": "ESP32OT",
+  "version": "1.0.0",
+  "description": "OpenTherm master/slave communication for ESP32 using RMT, an internal worker, typed messages and transparent proxy examples. Based on Ihor Melnyk's original OpenTherm library. Requires ESP-IDF 6 RMT APIs.",
+  "keywords": ["opentherm", "esp32", "rmt", "master", "slave", "gateway"],
+  "license": "GPL-3.0-only",
+  "authors": [
+    {"name": "Ihor Melnyk", "url": "https://github.com/ihormelnyk"},
+    {"name": "Laxilef", "url": "https://github.com/Laxilef", "maintainer": true}
+  ],
+  "homepage": "https://github.com/Laxilef/ESP32OT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Laxilef/ESP32OT.git"
+  },
+  "frameworks": ["arduino"],
+  "platforms": ["espressif32"],
+  "headers": ["ESP32OT.h"]
+}
