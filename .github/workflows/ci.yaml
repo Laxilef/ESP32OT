@@ -1,0 +1,138 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    paths-ignore:
+      - "**/*.md"
+      - "LICENSE"
+      - "CMakeLists.txt"
+      - "library.json"
+      - "library.properties"
+
+  pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - "LICENSE"
+      - "CMakeLists.txt"
+      - "library.json"
+      - "library.properties"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  cpplint:
+    name: cpplint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache pip
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-cpplint-${{ env.PYTHON_VERSION }}-${{ hashFiles('.github/workflows/ci.yaml') }}
+
+      - name: Install cpplint
+        run: python -m pip install --upgrade cpplint
+
+      - name: cpplint
+        run: |
+          FILTERS="-legal/copyright,\
+          -runtime/int,\
+          -runtime/references,\
+          -runtime/arrays,\
+          -runtime/printf,\
+          -whitespace/line_length,\
+          -whitespace/braces,\
+          -whitespace/comments,\
+          -whitespace/indent,\
+          -whitespace/newline,\
+          -whitespace/parens,\
+          -whitespace/blank_line,\
+          -readability/braces,\
+          -readability/todo,\
+          -readability/namespace,\
+          -build/header_guard,\
+          -build/include_subdir,\
+          -build/include_what_you_use,\
+          -build/include_order,\
+          -build/namespaces,\
+          -build/c++11"
+
+          cpplint \
+            --repository=. \
+            --recursive \
+            --quiet \
+            --extensions=h,cpp,ino \
+            --filter="$FILTERS" \
+            src examples
+
+  build:
+    name: Build (${{ matrix.board }} / ${{ matrix.example }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        board:
+          - lolin_s3_mini
+          - nodemcu-32s
+          - lolin_s2_mini
+          - lolin_c3_mini
+          - esp32-c6-devkitc-1
+        example:
+          - Master
+          - MasterCallbacks
+          - MasterAsync
+          - Slave
+          - TransparentProxy
+          - MasterHeap
+          - ReadAll
+          - TestAllIDs
+    env:
+      PIO_BOARD: ${{ matrix.board }}
+      PLATFORMIO_SRC_DIR: ${{ github.workspace }}/examples/${{ matrix.example }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio/.cache
+            ~/.platformio/platforms
+            ~/.platformio/packages
+          key: ${{ runner.os }}-platformio-${{ env.PYTHON_VERSION }}-${{ matrix.board }}-${{ hashFiles('platformio.ini', '.github/workflows/ci.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-platformio-${{ env.PYTHON_VERSION }}-${{ matrix.board }}-
+
+      - name: Install PlatformIO
+        run: >-
+          python -m pip install --upgrade
+          platformio
+          "cryptography>=46.0.7,<47"
+          "intelhex>=2.3.0"
+
+      - name: Build example
+        run: pio run --environment ci
